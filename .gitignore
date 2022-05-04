@@ -1,0 +1,8 @@
+# data存储文件夹
+data/
+
+# log
+log/
+
+# config
+utils/config.py
