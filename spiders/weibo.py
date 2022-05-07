@@ -6,6 +6,7 @@ import urllib
 import chardet
 import pandas as pd
 from utils import helper
+from utils.TimeLogger import log
 
 from utils.config import cookie
 import time
@@ -168,11 +169,16 @@ def get_weibo(uid, start_date, end_date, csv_path):
                 except:
                     print('json data', r)
                     if "200 OK" in r:
+                        # 代表已经结束微博
                         return 0
                     return -1
-                content = r["data"]["html"].replace(" ", "").replace("\\r\\n", "")
+                try:
+                    content = r["data"]["html"].replace(" ", "").replace("\\r\\n", "")
+                except:
+                    log('content error: {}'.format(r), save=True)
+                    return -1
                 content = helper.clear_html(content)  # 去掉html标签
-                print('content', content)
+                # print('content', content)
                 # print(content)
                 dic_forum['content'] = content if content else None
                 # print('content', dic_forum['content'])

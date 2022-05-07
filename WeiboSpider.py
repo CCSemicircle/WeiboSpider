@@ -100,13 +100,26 @@ class WeiboSpider:
         weibo_path = self.data_dir + 'weibo.csv'
         user_num = len(users)
         unfinished_weibo_users = []
+        finished_weibo_users = []
+        if os.path.exists(self.data_dir+'finished_weibo_users'):
+            with open(self.data_dir+'finished_weibo_users', 'rb') as file:
+                finished_weibo_users = list(pickle.load(file))
+
         for i in range(user_num):
             uid = users[i]
-            res = weibo.get_weibo(uid, start_date, end_date, weibo_path)
-            if res == -1:
-                unfinished_weibo_users.append(uid)
+            if uid in finished_weibo_users:
                 continue
-            log('finish user %s, current process: %.2f %%' % (uid, (i + 1) / user_num * 100), save=True)
+            try:
+                res = weibo.get_weibo(uid, start_date, end_date, weibo_path)
+                if res == -1:
+                    unfinished_weibo_users.append(uid)
+                    continue
+
+                finished_weibo_users.append(uid)
+                log('finish user %s, current process: %.2f %%' % (uid, (i + 1) / user_num * 100), save=True)
+            except:
+                with open(self.data_dir + 'finished_weibo_users', 'wb') as file:
+                    pickle.dump(finished_weibo_users, file)
 
         with open(self.data_dir+'unfinished_weibo_users', 'wb') as file:
             pickle.dump(unfinished_weibo_users, file)
@@ -116,13 +129,28 @@ class WeiboSpider:
         first_comment_path = self.data_dir + 'first_comment.csv'
         weibo_num = len(weibo_mids)
         unfinished_weibo_mids = []
+
+        finished_weibo_mids = []
+        if os.path.exists(self.data_dir+'finished_weibo_mids'):
+            with open(self.data_dir+'finished_weibo_mids', 'rb') as file:
+                finished_weibo_mids = list(pickle.load(file))
+
         for i in range(weibo_num):
             mid = weibo_mids[i]
-            res = comment.get_first_comment(mid,max_id=-1, max_id_type=0, csv_path=first_comment_path)
-            if res == -1:
-                unfinished_weibo_mids.append(mid)
+            if mid in finished_weibo_mids:
                 continue
-            log('finish weibo %s, current process: %.2f %%' % (mid, (i + 1) / weibo_num * 100), save=True)
+
+            try:
+                res = comment.get_first_comment(mid, max_id=-1, max_id_type=0, csv_path=first_comment_path)
+                if res == -1:
+                    unfinished_weibo_mids.append(mid)
+                    continue
+
+                finished_weibo_mids.append(mid)
+                log('finish weibo %s, current process: %.2f %%' % (mid, (i + 1) / weibo_num * 100), save=True)
+            except:
+                with open(self.data_dir + 'finished_weibo_mids', 'wb') as file:
+                    pickle.dump(finished_weibo_mids, file)
 
         with open(self.data_dir+'unfinished_weibo_mids', 'wb') as file:
             pickle.dump(unfinished_weibo_mids, file)
@@ -133,13 +161,28 @@ class WeiboSpider:
         second_comment_path = self.data_dir + 'second_comment.csv'
         first_comment_num = len(first_comment_ids)
         unfinished_first_comment_ids = []
+
+        finished_first_comment_ids = []
+        if os.path.exists(self.data_dir+'finished_first_comment_ids'):
+            with open(self.data_dir+'finished_first_comment_ids', 'rb') as file:
+                finished_first_comment_ids = list(pickle.load(file))
+
         for i in range(first_comment_num):
             first_comment_id = first_comment_ids[i]
-            res = comment.get_second_comment(first_comment_id, max_id=-1, max_id_type=0, csv_path=second_comment_path)
-            if res == -1:
-                unfinished_first_comment_ids(first_comment_id)
+            if first_comment_id in finished_first_comment_ids:
                 continue
-            log('finish first comment id: %s, current process: %.2f %%' % (first_comment_id, (i + 1) / first_comment_num * 100), save=True)
+
+            try:
+                res = comment.get_second_comment(first_comment_id, max_id=-1, max_id_type=0, csv_path=second_comment_path)
+                if res == -1:
+                    unfinished_first_comment_ids(first_comment_id)
+                    continue
+
+                finished_first_comment_ids.append(first_comment_id)
+                log('finish first comment id: %s, current process: %.2f %%' % (first_comment_id, (i + 1) / first_comment_num * 100), save=True)
+            except:
+                with open(self.data_dir + 'finished_first_comment_ids', 'wb') as file:
+                    pickle.dump(finished_first_comment_ids, file)
 
         with open(self.data_dir+'unfinished_first_comment_ids', 'wb') as file:
             pickle.dump(unfinished_first_comment_ids, file)
@@ -200,40 +243,40 @@ def main():
     friend_num = args.friend_num
     # friend_num = 20
 
-    # 第一次爬取粉丝及关注
-    threads = []
-    # 创建新线程
-    thread1 = GetFriendsThread(1, "Thread-Fans", users, friend_num, 'fans', data_dir)
-    thread2 = GetFriendsThread(2, "Thread-Followers", users, friend_num, 'followers', data_dir)
-    # 开启新线程
-    thread1.start()
-    thread2.start()
-    # 添加线程到线程列表
-    threads.append(thread1)
-    threads.append(thread2)
-    # 等待所有线程完成
-    for t in threads:
-        t.join()
-
-    # 补充未完成的user的粉丝及关注
-    with open(data_dir+'fans_unfinished_user', 'rb') as file:
-        unfinished_fans_user = list(pickle.load(file))
-    with open(data_dir+'followers_unfinished_user', 'rb') as file:
-        unfinished_followers_user = list(pickle.load(file))
-
-    threads = []
-    # 创建新线程
-    thread1 = GetFriendsThread(1, "Thread-Supple Fans", unfinished_fans_user, friend_num, 'fans', data_dir)
-    thread2 = GetFriendsThread(2, "Thread-Supple Followers", unfinished_followers_user, friend_num, 'followers', data_dir)
-    # 开启新线程
-    thread1.start()
-    thread2.start()
-    # 添加线程到线程列表
-    threads.append(thread1)
-    threads.append(thread2)
-    # 等待所有线程完成
-    for t in threads:
-        t.join()
+    # # 第一次爬取粉丝及关注
+    # threads = []
+    # # 创建新线程
+    # thread1 = GetFriendsThread(1, "Thread-Fans", users, friend_num, 'fans', data_dir)
+    # thread2 = GetFriendsThread(2, "Thread-Followers", users, friend_num, 'followers', data_dir)
+    # # 开启新线程
+    # thread1.start()
+    # thread2.start()
+    # # 添加线程到线程列表
+    # threads.append(thread1)
+    # threads.append(thread2)
+    # # 等待所有线程完成
+    # for t in threads:
+    #     t.join()
+    #
+    # # 补充未完成的user的粉丝及关注
+    # with open(data_dir+'fans_unfinished_user', 'rb') as file:
+    #     unfinished_fans_user = list(pickle.load(file))
+    # with open(data_dir+'followers_unfinished_user', 'rb') as file:
+    #     unfinished_followers_user = list(pickle.load(file))
+    #
+    # threads = []
+    # # 创建新线程
+    # thread1 = GetFriendsThread(1, "Thread-Supple Fans", unfinished_fans_user, friend_num, 'fans', data_dir)
+    # thread2 = GetFriendsThread(2, "Thread-Supple Followers", unfinished_followers_user, friend_num, 'followers', data_dir)
+    # # 开启新线程
+    # thread1.start()
+    # thread2.start()
+    # # 添加线程到线程列表
+    # threads.append(thread1)
+    # threads.append(thread2)
+    # # 等待所有线程完成
+    # for t in threads:
+    #     t.join()
 
     # 时间是包含左边界当天，不包含右边界当天
     start_date = args.weibo_start_date
