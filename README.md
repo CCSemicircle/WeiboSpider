@@ -55,7 +55,7 @@ ip_api = ""
 mysql_info = {
     'host': 'localhost',
     'user': 'root',
-    'passwd': '123456'
+    'passwd': ''
 }
 ```
 - 支持IP代理，需要设置ip动态获取api，即ip_api，推荐品易IP代理（利益无关，本人尝试过感觉还行）
