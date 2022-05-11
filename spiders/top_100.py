@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
 import json
-import pandas as pd
 from urllib import request
 import urllib.parse
+from utils.mysql import db
 
 headers_ajax = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0',
@@ -16,30 +16,51 @@ headers_ajax = {
 }
 
 
-def get_top_100(field_id, field_name, date, period_type):
-    data_top_100 = []
+def rankData2dic(date, period_type, field_id, field_name, rank_data):
+    dic = dict()
+    dic['date'] = date
+    dic['period_type'] = period_type
+    dic['field_id'] = field_id
+    dic['field_name'] = field_name
+    dic['uid'] = rank_data['uid']
+    dic['screen_name'] = rank_data['screen_name']
+    dic['score'] = rank_data['score']
+    dic['curr_rank'] = rank_data['rank']
+    dic['last_rank'] = rank_data['last_rank']
+    dic['rank_up_down'] = rank_data['rank_up_down']
+    return dic
+
+
+def get_top_100(field_id, field_name, date, period_type, sql_table_name='top100'):
+    """按照时间范围与时间类型爬取指定榜单博主"""
+    finished_uid = []
+    sql = f'select uid from {sql_table_name} where date="{date}" and period_type="{period_type}" and field_id={field_id}'
+    # print('sql', sql)
+    res = db.getAll(sql)
+    if res:
+        if len(res) >= 100:
+            # 代表该榜单已经爬取结束
+            return 0
+        else:
+            finished_uid = [dic['uid'] for dic in res]
+
     # 获得前20个
     url = "https://v6.bang.weibo.com/czv/%s?date=%s&period_type=%s" % (field_id, date, period_type)
     r = urllib.request.urlopen(url)
-    soup = BeautifulSoup(r.read())
+    soup = BeautifulSoup(r.read(), 'html.parser')
 
-    # r = requests.get("https://v6.bang.weibo.com/czv/domainlist?date=%s&period_type=month" % date)
-    # soup = BeautifulSoup(r.text)
-
-    items = soup.select("button.top-follow-btn.following-btn")
+    items = soup.select("button.top-follow-btn")
     for item in items:
-        # print(item)
-        try:
-            item.attrs["data-type"]
-        except:
-            dic = {}
-            data_json = json.loads(item.attrs["share-data"])
-            dic['field_id'] = field_id
-            dic['field_name'] = field_name
-            dic["rank"] = data_json["rank"]
-            dic["uid"] = data_json["uid"]
-            dic["screen_name"] = data_json["screen_name"]
-            data_top_100.append(dic)
+        rank_data = json.loads(item.attrs["share-data"])
+        if 'rank_up_down' not in rank_data.keys():
+            # 代表是“上榜新秀类”，为避免数据重复，删除
+            continue
+        if int(rank_data['uid']) in finished_uid:
+            # 如果已经爬取该博主，直接跳过
+            continue
+        dic = rankData2dic(date, period_type, field_id, field_name, rank_data)
+        db.insert_dict(dic, sql_table_name)
+
     # 获得后80个
     url = "https://v6.bang.weibo.com/aj/newczv/rank"
     for j in range(2, 6):
@@ -55,26 +76,24 @@ def get_top_100(field_id, field_name, date, period_type):
         r = request.urlopen(a).read().decode('utf-8')
         r = json.loads(r)
 
-        # r = requests.post(url, headers=headers_ajax, data=data).json()
 
-        rankData = r["data"]["rankData"]
-        for i in rankData:
-            dic = {}
-            dic['field_id'] = field_id
-            dic['field_name'] = field_name
-            dic["rank"] = rankData[i]["rank"]
-            dic["uid"] = rankData[i]["uid"]
-            dic["screen_name"] = rankData[i]["screen_name"]
-            data_top_100.append(dic)
-    # print(data_top_100)
-    return data_top_100
+        rank_list = r["data"]["rankData"]  # 数据格式 {'rank': data}
+        for i in rank_list:
+            rank_data = rank_list[i]
+            if int(rank_data['uid']) in finished_uid:
+                # 如果已经爬取该博主，直接跳过
+                continue
+            dic = rankData2dic(date, period_type, field_id, field_name, rank_data)
+            db.insert_dict(dic, sql_table_name)
+
+    return 0
 
 
 def get_field_id(init_field_id, date, period_type):
     fields = []
     url = "https://v6.bang.weibo.com/czv/%s?date=%s&period_type=%s" % (init_field_id, date, period_type)
     r = urllib.request.urlopen(url)
-    soup = BeautifulSoup(r.read())
+    soup = BeautifulSoup(r.read(), 'html.parser')
     items = soup.select('div.m-tag-box.click-field')
     # print(items)
     for item in items:
@@ -95,9 +114,6 @@ if __name__ == '__main__':
     n = len(fields)
     for i in range(n):
         field = fields[i]
-        data = get_top_100(field['field_id'], field['field_name'], date, period_type)
-        print('finish {} field, current progress: {} %'.format(field['field_name'], i/n*100))
-        top_100.extend(data)
-    # data = get_top_100(field_id, date, period_type )
-    df = pd.DataFrame(top_100)
-    df.to_csv('top_100.csv', encoding="utf_8_sig", index=False)
+        res = get_top_100(field['field_id'], field['field_name'], date, period_type, 'top100')
+        print('finish {} field, current progress: {} %'.format(field['field_name'], (i+1)/n*100))
+        break

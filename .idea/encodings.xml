@@ -3,5 +3,6 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/data/fans.csv" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/data/users_info.csv" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/log/res.log" charset="GBK" />
   </component>
 </project>

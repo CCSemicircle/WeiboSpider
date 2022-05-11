@@ -12,7 +12,7 @@
 
 ```python
 # 示例
-python WeiboSpider.py --top_100_date "2022-04-18" --top_100_type "week" --friend_num 2000 --weibo_start_date "2022-04-29" --weibo_end_date "2022-05-02"
+python WeiboSpider.py --top_100_date "2022-04-18" --top_100_type "week" --friend_num 2000 --weibo_start_date "2022-04-29" --weibo_end_date "2022-05-01" --thread_num 4
 ```
 ## 参数说明
 
@@ -21,10 +21,11 @@ python WeiboSpider.py --top_100_date "2022-04-18" --top_100_type "week" --friend
 - top_100_date：榜单日期，如果top_100_type为"week"，格式为"YYYY-mm-dd"，如果top_100_type为"month"，格式为"YYYY-mm"
 - friend_num：粉丝与关注的爬取数量，设置过大可能无法获取，默认2000
 - weibo_start_date：微博时间范围的起始时间，格式为"YYYY-mm-dd"，**包括这天当天**
-- weibo_end_date：微博时间范围的终止时间，格式为"YYYY-mm-dd"，**不包括这天当天**
+- weibo_end_date：微博时间范围的终止时间，格式为"YYYY-mm-dd"，**包括这天当天**
+- thread_num：同时运行的多线程个数
 
 ## 注意事项
-
+- 在运行之前，先运行创建数据库，并且执行sql文件夹下的weibo.sql文件以创建数据表
 - 在运行之间在utils文件夹下创建config.py文件，配置好cookie与ip_api
 ```python
 # utils/config.py
@@ -50,6 +51,12 @@ user_agent = [
 ]
 
 ip_api = ""
+
+mysql_info = {
+    'host': 'localhost',
+    'user': 'root',
+    'passwd': '123456'
+}
 ```
 - 支持IP代理，需要设置ip动态获取api，即ip_api，推荐品易IP代理（利益无关，本人尝试过感觉还行）
 - 代码各部分均设置了识别已经爬取内容，如果因为意外中止了爬取，重新运行即可，无须修改运行参数

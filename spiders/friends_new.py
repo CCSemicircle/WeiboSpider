@@ -8,19 +8,17 @@ import math
 from utils import config
 from utils import helper
 from utils.get_ip import proxy
-
-
-MIN = 10  # 文件最小值
+from utils.mysql import db
 
 
 def user2dic(uid, user, friendship='fans'):
     dic = dict()
-    curr_id = "followers_id" if friendship == 'fans' else 'fans_id'
-    dic[curr_id] = uid
+    dic['friendship'] = friendship
+    dic['uid'] = uid
     first_layer_title = ['id', 'idstr', 'class', 'name', 'province', 'city', 'location', 'description', 'url',
                          'profile_image_url', 'cover_image_phone', 'profile_url', 'domain', 'gender', 'followers_count',
                          'followers_count_str', 'friends_count', 'pagefriends_count', 'statuses_count',
-                         'video_status_count', 'video_play_count', 'favourites_count', 'created_at', 'following',
+                         'video_status_count', 'video_play_count', 'favourites_count', 'created_at',
                          'allow_all_act_msg', 'geo_enabled', 'verified', 'verified_type', 'status_id', 'status_idstr',
                          'ptype', 'allow_all_comment', 'verified_reason', 'verified_trade', 'verified_reason_url',
                          'verified_source', 'verified_source_url', 'bi_followers_count', 'lang',
@@ -76,46 +74,24 @@ def get_json_data(url):
         'Cookie': config.cookie
     }
 
-    # random_proxy = proxy.random_proxy()
-
-    # # 代理成功了，但是headers需要改变
-    # targetUrl = "https://www.baidu.com"
-    # resp = requests.get(targetUrl, proxies=random_proxy)
-    #
-    # print(resp.status_code)
-    #
-    # while resp and resp.status_code != 200:
-    #     random_proxy = proxy.random_proxy()
-    #     resp = requests.get(targetUrl, proxies=random_proxy)
-    #     print(resp.status_code)
-
-    # r = requests.get("http://httpbin.org/ip", proxies=random_proxy)
-    # print(r.text)
-    # print('random_proxy', random_proxy)
-
     try:
         response = requests.get(url, headers=headers, timeout=10, proxies=proxy.random_proxy())
     except:
         response = requests.get(url, headers=headers, timeout=10, proxies=proxy.random_proxy())
 
-    # response = requests.get(url, headers=headers, timeout=20)
-    # time.sleep(2)  # 加上2s 的延时防止被反爬
-    # print('response', response.text)
     return response.text
 
-def get_friends_data(uid, total_number, csv_path, friendship='fans'):
-    curr_id = 'fans_id' if friendship == 'followers' else 'followers_id'
+
+def get_friends_data(uid, total_number, friendship='fans', sql_table_name='friend'):
+    """爬取新版微博的粉丝与关注列表"""
+    sql = f'select id from {sql_table_name} where friendship=%s and uid=%s'
+    res = db.getAll(sql, (friendship, uid))
 
     # 获取已经获取的个数
-    start = helper.get_file_size(csv_path)
-    # print('start', start)
-    if start > MIN:
-        df = pd.read_csv(csv_path, sep='\t', encoding='utf-8', index_col=False, low_memory=False,
-                         usecols=[0])  # 此处必须设置为False，否则会将第一列设置为索引，导致第一二列数据合并
-        # print('curr_id', df[curr_id])
-        start = len(df[df[curr_id] == uid])
-        # print('df length', len(df))
-    # print('start', start)
+    start = len(res) if res else 0
+    if start >= total_number:
+        # 代表该博主粉丝或关注列表已经已经爬取结束
+        return 0
 
     # 先获取总的粉丝数量
     url = "https://www.weibo.com/ajax/friendships/friends?relate=fans&page={}&uid={}&type=all&newFollowerCount=0" if friendship == 'fans' \
@@ -151,6 +127,7 @@ def get_friends_data(uid, total_number, csv_path, friendship='fans'):
         friends = []
         for user in users:
             dic = user2dic(uid, user, friendship)
+            db.insert_dict(dic, sql_table_name)
             friends.append(dic)
 
         # 按page存储
@@ -182,5 +159,5 @@ if __name__ == '__main__':
     followers_path = "followers.csv"
     fans_path = "fans.csv"
     for uid in uids:
-        print(get_friends_data(uid, 40, fans_path, friendship='fans'))
-        print(get_friends_data(uid, 40, followers_path, friendship='followers'))
+        print(get_friends_data(uid, 20, fans_path, sql_table_name='friend', friendship='fans'))
+        print(get_friends_data(uid, 20, followers_path, sql_table_name='friend', friendship='followers'))

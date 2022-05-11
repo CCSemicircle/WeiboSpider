@@ -8,6 +8,7 @@ def parse_args():
     parser.add_argument('--friend_num', type=int, default=2000, help='Number of fans or followers. Default: 2000.')
     parser.add_argument('--weibo_start_date', nargs='?', required=True, help='Start date of weibo, format: "YYYY-mm-dd".')
     parser.add_argument('--weibo_end_date', nargs='?', required=True, help='End date of weibo, format: "YYYY-mm-dd".')
+    parser.add_argument('--thread_num', type=int, default=4, help='Number of spider thread.')
     return parser.parse_args()
 
 

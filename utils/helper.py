@@ -57,3 +57,26 @@ def time2str(f):
     dt = datetime.datetime.strptime(str2, '%a %b %d %H:%M:%S %Y')
     t=dt.strftime("%Y-%m-%d %H:%M:%S")
     return t
+
+def textNumber2int(init_number):
+    """将带有文字的数字转为纯数字"""
+    init_number = str(init_number)  #  先统一化成str
+    if '千' in init_number:
+        number = int(float(init_number[:-1]) * 1000)
+    elif '万' in init_number:
+        number = int(float(init_number[:-1])*10000)
+    elif '亿' in init_number:
+        number = int(float(init_number[:-1])*100000000)
+    elif '.' in init_number:
+        number = float(init_number)
+    else:
+        number = int(init_number)
+
+    return number
+
+if __name__ == '__main__':
+    print(textNumber2int(20.1))
+    print(textNumber2int(20))
+    print(textNumber2int('20千'))
+    print(textNumber2int('20万'))
+    print(textNumber2int('20亿'))

@@ -3,9 +3,10 @@ import re
 from urllib import request
 import urllib
 import chardet
-import pandas as pd
 from utils.config import cookie
 import requests
+from utils.mysql import db
+from utils import helper
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36',
@@ -22,7 +23,14 @@ headers = {
 }
 
 
-def get_infos(uid):
+def get_user_info(uid, sql_table_name='user_info'):
+    """获取用户个人信息"""
+    sql = f'select uid from {sql_table_name} where uid={uid}'
+    res = db.getOne(sql)
+    if res:
+        # 如果存在，代表改用户信息已经爬取，可以直接返回
+        return 0
+
     dic = {}
     # headers = config.get_headers()
     add = urllib.request.Request(url="https://weibo.com/%s?is_hot=1" % (uid), headers=headers)
@@ -45,11 +53,11 @@ def get_infos(uid):
         info_page = urllib.request.urlopen(url=add, timeout=20).read().decode('utf-8')
 
         # 基本信息
-        nick = re.findall(r'<h1 class=\\"username\\">(.*?)<\\/h1>', info_page)
+        screen_name = re.findall(r'<h1 class=\\"username\\">(.*?)<\\/h1>', info_page)
         intro = re.findall(r'<p class=\\"p_txt\\">(.*?)<\\/p>', info_page)
         industry_category = re.findall(r'行业类别<\\/span>(.*?)<\\/span>', info_page)
 
-        dic['nick'] = nick[0] if nick else None
+        dic['screen_name'] = screen_name[0] if screen_name else None
         dic['intro'] = intro[0] if intro else None
         dic['industry_category'] = industry_category[0].replace(" ", "").replace("\\r\\n", "").replace("\\t", "") if industry_category else None
 
@@ -65,7 +73,7 @@ def get_infos(uid):
 
         # 蓝V认证info界面没有关注个数等信息，需要在主界面获取
         main_page_nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*\.?\d+?.?)<\\/strong>', main_page)
-        dic["follow_num"] = main_page_nums[0] if main_page_nums else None
+        dic["follower_num"] = main_page_nums[0] if main_page_nums else None
         dic["fans_num"] = main_page_nums[1] if main_page_nums else None
         dic["post_num"] = main_page_nums[2] if main_page_nums else None
 
@@ -78,7 +86,7 @@ def get_infos(uid):
         info_page = urllib.request.urlopen(url=add, timeout=20).read().decode('utf-8')
 
         # 基本信息
-        nick = re.findall(r'昵称：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
+        screen_name = re.findall(r'昵称：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
         location = re.findall(r'所在地：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
         sex = re.findall(r'性别：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
         sexual_orientaion = re.findall(r'性取向：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
@@ -90,15 +98,15 @@ def get_infos(uid):
         intro = re.findall(r'简介：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
         regist_time = re.findall(r'注册时间：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
 
-        dic['nick'] = nick[0].replace(" ", "").replace("\\r\\n", "") if nick else None
+        dic['screen_name'] = screen_name[0].replace(" ", "").replace("\\r\\n", "") if screen_name else None
         dic['location'] = location[0].replace("\\r\\n", "") if location else None
         dic['sex'] = sex[0].replace(" ", "").replace("\\r\\n", "") if sex else None
-        dic['sexual_orientaion'] = sexual_orientaion[0].replace(" ", "").replace("\\r\\n", "") if sexual_orientaion else None
+        dic['sexual_orientation'] = sexual_orientaion[0].replace(" ", "").replace("\\r\\n", "") if sexual_orientaion else None
         dic['marriage'] = marriage[0].replace(" ", "").replace("\\r\\n", "") if marriage else None
         dic['birthday'] = birthday[0].replace(" ", "").replace("\\r\\n", "") if birthday else None
         dic['blood_type'] = blood_type[0].replace(" ", "").replace("\\r\\n", "") if blood_type else None
-        dic['blog'] = blog[0].replace(" ", "").replace("\\r\\n", "") if blog else None
-        dic['style_domain'] = style_domain[0].replace(" ", "").replace("\\r\\n", "") if style_domain else None
+        dic['blog'] = blog[0].replace(" ", "").replace("\\r\\n", "").replace('\/', '/') if blog else None
+        dic['style_domain'] = style_domain[0].replace(" ", "").replace("\\r\\n", "").replace('\/', '/')  if style_domain else None
         dic['intro'] = intro[0].replace(" ", "").replace("\\r\\n", "") if intro else None
         dic['regist_time'] = regist_time[0].replace(" ", "").replace("\\r\\n", "") if regist_time else None
 
@@ -122,34 +130,38 @@ def get_infos(uid):
         tags = re.findall(r'<a target=\\"_blank\\" node-type=\\"tag\\".*?<\\/span>(.*?)<\\/a>', info_page)
         if tags:
             tags = [tag.replace(" ", "").replace("\\r\\n", "") for tag in tags]
-            tags = "|".join(tags)
+            tags = ",".join(tags)
         dic['tags'] = tags if tags else None
 
         # 粉丝、关注、微博数
         # nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*)<\\/strong>', info_page)
         nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*\.?\d+?.?)<\\/strong>', info_page)  # num里可能含有以万为单位的数
         if nums:
-            dic["follow_num"] = nums[0]
-            dic["fans_num"] = nums[1]
-            dic["post_num"] = nums[2]
+            dic["follower_num"] = helper.textNumber2int(nums[0]) if len(nums) >= 1 else 0
+            dic["fans_num"] = helper.textNumber2int(nums[1]) if len(nums) >= 2 else 0
+            dic["post_num"] = helper.textNumber2int(nums[2]) if len(nums) >= 3 else 0
+
 
         # 会员信息
         vip_rank = re.findall(r'W_icon icon_member(\d*)', info_page)
         growth_value = re.findall(r'成长值：.*?<span.*?>(\d*)<\\/span>', info_page)
-        dic['growth_value'] = growth_value[0] if growth_value else None
-        dic['vip_rank'] = vip_rank[0] if vip_rank else None
+        dic['growth_value'] = int(growth_value[0]) if growth_value else None
+        dic['vip_rank'] = int(vip_rank[0]) if vip_rank else None
 
 
-    print(dic)
+    # print(dic)
 
-    return dic
+    db.insert_dict(dic, sql_table_name)
+
+    return 0
 
 
 if __name__ == '__main__':
-    uids = ["1906123125", "5184087910", "6105713761"]
+    uids = [1906123125, 5184087910, 6105713761]
     # uids = ["6105713761"]
     data = []
     for uid in uids:
-        data.append(get_infos(uid))
-    df = pd.DataFrame(data)
-    df.to_csv('user_info_sample.csv', index=False, encoding='utf_8_sig')
+        res = get_user_info(uid, sql_table_name='user_info')
+        # data.append(get_infos(uid))
+    # df = pd.DataFrame(data)
+    # df.to_csv('user_info_sample.csv', index=False, encoding='utf_8_sig')
