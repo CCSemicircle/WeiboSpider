@@ -1,7 +1,5 @@
-import os
 import pickle
 
-import pandas as pd
 from spiders import top_100
 from spiders import user_info
 from spiders import friends_new

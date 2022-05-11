@@ -22,11 +22,11 @@ python WeiboSpider.py --top_100_date "2022-04-18" --top_100_type "week" --friend
 - friend_num：粉丝与关注的爬取数量，设置过大可能无法获取，默认2000
 - weibo_start_date：微博时间范围的起始时间，格式为"YYYY-mm-dd"，**包括这天当天**
 - weibo_end_date：微博时间范围的终止时间，格式为"YYYY-mm-dd"，**包括这天当天**
-- thread_num：同时运行的多线程个数
+- thread_num：同时运行的多线程个数，默认为4
 
 ## 注意事项
 - 在运行之前，先运行创建数据库，并且执行sql文件夹下的weibo.sql文件以创建数据表
-- 在运行之间在utils文件夹下创建config.py文件，配置好cookie与ip_api
+- 在运行之间在utils文件夹下创建config.py文件，配置好cookie、ip_api，特别是mysql的配置内容
 ```python
 # utils/config.py
 cookie = ""
