@@ -27,9 +27,10 @@ def get_user_info(uid, sql_table_name='user_info'):
     """获取用户个人信息"""
     sql = f'select uid from {sql_table_name} where uid={uid}'
     res = db.getOne(sql)
-    if res:
-        # 如果存在，代表改用户信息已经爬取，可以直接返回
-        return 0
+    # todo
+    # if res:
+    #     # 如果存在，代表改用户信息已经爬取，可以直接返回
+    #     return 0
 
     dic = {}
     # headers = config.get_headers()
@@ -72,10 +73,13 @@ def get_user_info(uid, sql_table_name='user_info'):
         dic['vip_rank'] = vip_rank[0] if vip_rank else None
 
         # 蓝V认证info界面没有关注个数等信息，需要在主界面获取
-        main_page_nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*\.?\d+?.?)<\\/strong>', main_page)
-        dic["follower_num"] = main_page_nums[0] if main_page_nums else None
-        dic["fans_num"] = main_page_nums[1] if main_page_nums else None
-        dic["post_num"] = main_page_nums[2] if main_page_nums else None
+        follower_num = re.findall(r'<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">关注', main_page)
+        fans_num = re.findall(r'关注.*?<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">粉丝', main_page)
+        post_num = re.findall(r'粉丝.*?<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">微博', main_page)
+
+        dic["follower_num"] = helper.textNumber2int(follower_num[0]) if follower_num else None
+        dic["fans_num"] = helper.textNumber2int(fans_num[0]) if fans_num else None
+        dic["post_num"] = helper.textNumber2int(post_num[0]) if post_num else None
 
     else:
         try:
@@ -134,12 +138,13 @@ def get_user_info(uid, sql_table_name='user_info'):
         dic['tags'] = tags if tags else None
 
         # 粉丝、关注、微博数
-        # nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*)<\\/strong>', info_page)
-        nums = re.findall(r'<strong class=\\"W_f.*?\\">(\d*\.?\d+?.?)<\\/strong>', info_page)  # num里可能含有以万为单位的数
-        if nums:
-            dic["follower_num"] = helper.textNumber2int(nums[0]) if len(nums) >= 1 else 0
-            dic["fans_num"] = helper.textNumber2int(nums[1]) if len(nums) >= 2 else 0
-            dic["post_num"] = helper.textNumber2int(nums[2]) if len(nums) >= 3 else 0
+        follower_num = re.findall(r'<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">关注', info_page)
+        fans_num = re.findall(r'关注.*?<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">粉丝', info_page)
+        post_num = re.findall(r'粉丝.*?<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">微博', info_page)
+
+        dic["follower_num"] = helper.textNumber2int(follower_num[0]) if follower_num else None
+        dic["fans_num"] = helper.textNumber2int(fans_num[0]) if fans_num else None
+        dic["post_num"] = helper.textNumber2int(post_num[0]) if post_num else None
 
 
         # 会员信息
@@ -157,7 +162,7 @@ def get_user_info(uid, sql_table_name='user_info'):
 
 
 if __name__ == '__main__':
-    uids = [1906123125, 5184087910, 6105713761]
+    uids = [1906123125, 5184087910, 6105713761, 3929704484]
     # uids = ["6105713761"]
     data = []
     for uid in uids:
