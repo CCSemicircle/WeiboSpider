@@ -61,6 +61,8 @@ def time2str(f):
 def textNumber2int(init_number):
     """将带有文字的数字转为纯数字"""
     init_number = str(init_number)  #  先统一化成str
+    if len(init_number) == 0:
+        return 0
     if '千' in init_number:
         number = int(float(init_number[:-1]) * 1000)
     elif '万' in init_number:

@@ -10,7 +10,7 @@ from utils.TimeLogger import log
 
 from utils.config import cookie
 import time
-from utils import request
+from utils import api
 from utils.mysql import db
 
 INF = 10000000  # 无限大数
@@ -61,9 +61,9 @@ def get_weibo(uid, start_date, end_date, sql_table_name='weibo'):
                                  headers=headers)  # 设置page
 
     try:
-        r = request.urlib(add, 10)
+        r = api.urlib(add, 10)
     except:
-        r = request.urlib(add, 10)
+        r = api.urlib(add, 10)
 
     try:
         page_id = re.findall(r'\$CONFIG\[\'page_id\']=\'(\d+)\'', r)[0]
@@ -78,9 +78,9 @@ def get_weibo(uid, start_date, end_date, sql_table_name='weibo'):
         url = "https://weibo.com/p/%s/home?is_ori=1&is_forward=1&is_text=1&is_pic=1&is_video=1&is_music=1&is_article=1&key_word=&start_time=%s&end_time=%s&is_search=1&is_searchadv=1&page=%s" % (page_id, start_date, end_date, page)
         add = urllib.request.Request(url=url, headers=headers)
         try:
-            r = request.urlib(add, 10)
+            r = api.urlib(add, 10)
         except:
-            r = request.urlib(add, 10)
+            r = api.urlib(add, 10)
 
         # print('r', r)
 
@@ -162,9 +162,9 @@ def get_weibo(uid, start_date, end_date, sql_table_name='weibo'):
                 add = urllib.request.Request(url="https://weibo.com/p/aj/mblog/getlongtext?mid=%s" % dic_forum['mid'],
                                              headers=headers)
                 try:
-                    content_r = request.urlib(add, 10)
+                    content_r = api.urlib(add, 10)
                 except:
-                    content_r = request.urlib(add, 10)
+                    content_r = api.urlib(add, 10)
 
                 try:
                     content_json = json.loads(content_r)
@@ -228,9 +228,9 @@ def get_weibo(uid, start_date, end_date, sql_table_name='weibo'):
 
             add = urllib.request.Request(url=url, headers=headers)
             try:
-                r = request.urlib(add, 10)
+                r = api.urlib(add, 10)
             except:
-                r = request.urlib(add, 10)
+                r = api.urlib(add, 10)
 
             # print('r', r)
             forums = re.findall(r'<div action-data=\\"cur_visible=0\\"   (.*?)<div node-type=\\"feed_list_repeat\\"', r)

@@ -109,7 +109,7 @@ def get_first_comment(mid, max_id, max_id_type, sql_table_name='first_comment'):
             res = requests.get(url, headers=headers, proxies=proxy.random_proxy())
         # print('res', res)
         res_json = res.json()
-        # print('res_json', res_json)
+        print('res_json', res_json)
         if res_json['ok']==0:
             return -1
 
@@ -129,7 +129,7 @@ def get_first_comment(mid, max_id, max_id_type, sql_table_name='first_comment'):
                 # 避免重复
                 continue
             dic = comment2dict(mid, comment, comment_grade=1)
-            # print('dic', dic)
+            print('dic', dic)
             # print('dic keys', dic.keys())
             db.insert_dict(dic, sql_table_name)
 
@@ -236,4 +236,4 @@ if __name__ == '__main__':
     res1 = get_first_comment('4763588521364858', max_id=-1, max_id_type=0)
     # res2 = get_second_comment('4763589019961289', max_id=-1, max_id_type=0)
 
-    print('res1', res1)
+    print('res2', res1)

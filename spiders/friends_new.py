@@ -75,9 +75,9 @@ def get_json_data(url):
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=10, proxies=proxy.random_proxy())
+        response = requests.get(url, headers=headers, timeout=20, proxies=proxy.random_proxy())
     except:
-        response = requests.get(url, headers=headers, timeout=10, proxies=proxy.random_proxy())
+        response = requests.get(url, headers=headers, timeout=20, proxies=proxy.random_proxy())
 
     return response.text
 
@@ -128,13 +128,7 @@ def get_friends_data(uid, total_number, friendship='fans', sql_table_name='frien
         for user in users:
             dic = user2dic(uid, user, friendship)
             db.insert_dict(dic, sql_table_name)
-            friends.append(dic)
 
-        # 按page存储
-        if friends:
-            # 如果有数据再存储
-            friends_df = pd.DataFrame(friends)
-            friends_df.to_csv(csv_path, sep='\t', index=False, encoding='utf_8_sig', mode='a+', header=True if helper.get_file_size(csv_path) < MIN else False)
 
         print('user id: %s, %s data start %d page, current process: %.2f %%' % (uid, friendship, page, page / (num_page - 1) * 100))
 
@@ -159,5 +153,5 @@ if __name__ == '__main__':
     followers_path = "followers.csv"
     fans_path = "fans.csv"
     for uid in uids:
-        print(get_friends_data(uid, 20, fans_path, sql_table_name='friend', friendship='fans'))
-        print(get_friends_data(uid, 20, followers_path, sql_table_name='friend', friendship='followers'))
+        print(get_friends_data(uid, 20, friendship='fans'))
+        print(get_friends_data(uid, 20, friendship='followers'))

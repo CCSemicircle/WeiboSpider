@@ -7,6 +7,8 @@ from utils.config import cookie
 import requests
 from utils.mysql import db
 from utils import helper
+from utils.TimeLogger import log
+from utils import api
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36',
@@ -17,7 +19,7 @@ headers = {
     'X-Requested-With': 'XMLHttpRequest',
     'Origin': 'https://weibo.com',
     'refer': 'https://img.t.sinajs.cn/t6/style/css/module/base/frame.css?version=895020bb',
-    'Connection': 'keep-alive',
+    # 'Connection': 'keep-alive',
     'Host': 'weibo.com',
     'Cookie': cookie
 }
@@ -27,15 +29,28 @@ def get_user_info(uid, sql_table_name='user_info'):
     """获取用户个人信息"""
     sql = f'select uid from {sql_table_name} where uid={uid}'
     res = db.getOne(sql)
-    # todo
-    # if res:
-    #     # 如果存在，代表改用户信息已经爬取，可以直接返回
-    #     return 0
+    # to do
+    if res:
+        # 如果存在，代表改用户信息已经爬取，可以直接返回
+        log('user %s finished' % uid, save=True)
+        return 0
 
     dic = {}
     # headers = config.get_headers()
-    add = urllib.request.Request(url="https://weibo.com/%s?is_hot=1" % (uid), headers=headers)
-    main_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+    url = "https://weibo.com/%s?is_hot=1" % (str(uid))
+    # print('url', url)
+    add = urllib.request.Request(url=url, headers=headers)
+
+
+    # resp = requests.get(url, headers, timeout=20)
+    # print('resp', resp)
+    # main_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+    try:
+        main_page = api.urlib(add, 20)
+    except:
+        main_page = api.urlib(add, 20)
+
+    # log('get main page success', save=True)
 
     dic['uid'] = uid
 
@@ -51,14 +66,19 @@ def get_user_info(uid, sql_table_name='user_info'):
     if authentication_grade == '蓝V':
         # 蓝V认证的信息界面链接不同
         add = urllib.request.Request(url="https://weibo.com/%s/about" % (uid), headers=headers)
-        info_page = urllib.request.urlopen(url=add, timeout=20).read().decode('utf-8')
+        try:
+            # info_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+            info_page = api.urlib(add, 20)
+        except:
+            # info_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+            info_page = api.urlib(add, 20)
 
         # 基本信息
         screen_name = re.findall(r'<h1 class=\\"username\\">(.*?)<\\/h1>', info_page)
         intro = re.findall(r'<p class=\\"p_txt\\">(.*?)<\\/p>', info_page)
         industry_category = re.findall(r'行业类别<\\/span>(.*?)<\\/span>', info_page)
 
-        dic['screen_name'] = screen_name[0] if screen_name else None
+        dic['screen_name'] = screen_name[0] if screen_name else ''
         dic['intro'] = intro[0] if intro else None
         dic['industry_category'] = industry_category[0].replace(" ", "").replace("\\r\\n", "").replace("\\t", "") if industry_category else None
 
@@ -70,7 +90,7 @@ def get_user_info(uid, sql_table_name='user_info'):
         vip_rank = re.findall(r'W_icon icon_member(\d*)', info_page)
         growth_value = re.findall(r'成长值：.*?<span.*?>(\d*)<\\/span>', info_page)
         dic['growth_value'] = growth_value[0] if growth_value else None
-        dic['vip_rank'] = vip_rank[0] if vip_rank else None
+        dic['vip_rank'] = helper.textNumber2int(vip_rank[0]) if vip_rank else None
 
         # 蓝V认证info界面没有关注个数等信息，需要在主界面获取
         follower_num = re.findall(r'<strong.*?>(\d*\.?\d+?.?)<\\/strong>.*?<span class=\\"S_txt2\\">关注', main_page)
@@ -87,7 +107,12 @@ def get_user_info(uid, sql_table_name='user_info'):
         except:
             return -1
         add = urllib.request.Request(url="https://weibo.com/p/%s/info" % (page_id), headers=headers)
-        info_page = urllib.request.urlopen(url=add, timeout=20).read().decode('utf-8')
+        try:
+            # info_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+            info_page = api.urlib(add, 20)
+        except:
+            # info_page = urllib.request.urlopen(url=add, timeout=20).read().decode(encoding="utf-8")
+            info_page = api.urlib(add, 20)
 
         # 基本信息
         screen_name = re.findall(r'昵称：.*?<span class=\\"pt_detail\\">(.*?)<\\/span>', info_page)
@@ -150,13 +175,14 @@ def get_user_info(uid, sql_table_name='user_info'):
         # 会员信息
         vip_rank = re.findall(r'W_icon icon_member(\d*)', info_page)
         growth_value = re.findall(r'成长值：.*?<span.*?>(\d*)<\\/span>', info_page)
-        dic['growth_value'] = int(growth_value[0]) if growth_value else None
-        dic['vip_rank'] = int(vip_rank[0]) if vip_rank else None
+        dic['growth_value'] = helper.textNumber2int(vip_rank[0]) if growth_value else None
+        dic['vip_rank'] = helper.textNumber2int(vip_rank[0]) if vip_rank else None
 
 
-    # print(dic)
+    # log('dic {}'.format(dic), save=True)
 
-    db.insert_dict(dic, sql_table_name)
+    insert_id = db.insert_dict(dic, sql_table_name)
+    # log('insert id {}'.format(insert_id), save=True)
 
     return 0
 
